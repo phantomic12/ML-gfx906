@@ -3,12 +3,8 @@
 pushd $(dirname ${BASH_SOURCE[0]})
 
 # TransferBench git tag/branch to build
-if [ "$TB_VERSION" == "" ]; then
-  TB_VERSION="main"
-fi
+set_default TB_VERSION "main"
 # push result
-if [ "$TB_PUSH" == "" ]; then
-  TB_PUSH="0"
-fi
+set_default TB_PUSH "0"
 
 popd

@@ -3,31 +3,14 @@
 pushd $(dirname ${BASH_SOURCE[0]})
 
 # value from tag https://github.com/ROCm/TheRock/tags therock-<VERSION>
-if [ "$ROCM_VERSION" == "" ]; then
-  ROCM_VERSION=7.14
-fi
-
-if [ "$ROCM_ARCH" == "" ]; then
-  ROCM_ARCH=gfx906
-fi
-
-if [ "$ROCM_BUILD" == "" ]; then
-  ROCM_BUILD=$ROCM_VERSION.0-$ROCM_ARCH+$REPO_GIT_REF
-fi
-
+set_default ROCM_VERSION "7.14"
+set_default ROCM_ARCH "gfx906"
+set_default ROCM_BUILD "$ROCM_VERSION.0-$ROCM_ARCH+$REPO_GIT_REF"
 # base image
-if [ "$ROCM_BASE_IMAGE" == "" ]; then
-  ROCM_BASE_IMAGE="docker.io/library/ubuntu:24.04"
-fi
-
+set_default ROCM_BASE_IMAGE "docker.io/library/ubuntu:24.04"
 # destination image
-if [ "$ROCM_IMAGE" == "" ]; then
-  ROCM_IMAGE=docker.io/mixa3607/rocm-gfx906
-fi
-
+set_default ROCM_IMAGE "docker.io/mixa3607/rocm-gfx906"
 # push image
-if [ "$ROCM_PUSH" == "" ]; then
-  ROCM_PUSH="1"
-fi
+set_default ROCM_PUSH "1"
 
 popd

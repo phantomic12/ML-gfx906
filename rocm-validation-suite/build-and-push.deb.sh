@@ -17,15 +17,7 @@ echo "ROCM ARCH:          ${ROCM_ARCH}"
 echo "ROCM VERSION:       ${ROCM_VERSION}"
 echo "PUSH:               ${RVS_PUSH}"
 
-if [ -d "$RVS_PACKAGES_DIR" ]; then
-  echo "Directory $RVS_PACKAGES_DIR exist. "
-  if [ "$RVS_FORCE_BUILD" == "1" ]; then
-    echo "Force build..."
-  else
-    echo "Skip."
-    exit 0
-  fi
-fi
+skip_if_dir_exists "$RVS_PACKAGES_DIR" "$RVS_FORCE_BUILD"
 
 DOCKER_EXTRA_ARGS=(
   --build-arg "BASE_ROCM_IMAGE=${RVS_BASE_IMAGE}"
@@ -38,11 +30,9 @@ DOCKER_EXTRA_ARGS=(
   --output "type=local,dest=$RVS_PACKAGES_DIR"
 )
 
-mkdir -p ./logs || true
-docker buildx build "${DOCKER_EXTRA_ARGS[@]}" ./build-context 2>&1 | tee ./logs/build_$(date +%Y%m%d%H%M%S).log
+docker_build_with_log
 
 # Push packages
 if [ "$RVS_PUSH" == "1" ]; then
-  SCP_DST="k3s@kube-worker6.arkprojects.lan:/home/k3s/rocm-dev-packages/rocm-validation-suite"
-  find "$RVS_PACKAGES_DIR" -maxdepth 1 -mindepth 1 -name "*.deb" | xargs -I {} scp {} "$SCP_DST" 
+  scp_debs "$RVS_PACKAGES_DIR" "rocm-validation-suite"
 fi

@@ -1,6 +1,10 @@
-RELEASE_TAG="$(curl -L \
-  -H "Accept: application/vnd.github+json" \
-  'https://api.github.com/repos/Comfy-Org/ComfyUI/releases?per_page=1' | yq -r '.[0].tag_name')"
+#/bin/bash
+set -eo pipefail
+
+cd $(dirname $0)
+source ../env.sh
+
+RELEASE_TAG="$(github_last_release_tag "Comfy-Org/ComfyUI")"
 
 PRESET=preset.$RELEASE_TAG-rocm-7.14.sh
 if ! [ -f "$PRESET" ]; then

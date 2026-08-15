@@ -17,15 +17,7 @@ echo "ROCM ARCH:         ${ROCM_ARCH}"
 echo "ROCM VERSION:      ${ROCM_VERSION}"
 echo "PUSH:              ${TB_PUSH}"
 
-if [ -d "$TB_PACKAGES_DIR" ]; then
-  echo "Directory $TB_PACKAGES_DIR exist. "
-  if [ "$TB_FORCE_BUILD" == "1" ]; then
-    echo "Force build..."
-  else
-    echo "Skip."
-    exit 0
-  fi
-fi
+skip_if_dir_exists "$TB_PACKAGES_DIR" "$TB_FORCE_BUILD"
 
 DOCKER_EXTRA_ARGS=(
   --build-arg "BASE_ROCM_IMAGE=${TB_BASE_IMAGE}"
@@ -40,11 +32,9 @@ DOCKER_EXTRA_ARGS=(
   --output "type=local,dest=$TB_PACKAGES_DIR"
 )
 
-mkdir -p ./logs || true
-docker buildx build "${DOCKER_EXTRA_ARGS[@]}" ./build-context 2>&1 | tee ./logs/build_$(date +%Y%m%d%H%M%S).log
+docker_build_with_log
 
 # Push packages
 if [ "$TB_PUSH" == "1" ]; then
-  SCP_DST="k3s@kube-worker6.arkprojects.lan:/home/k3s/rocm-dev-packages/rocm-transfer-bench"
-  find "$TB_PACKAGES_DIR" -maxdepth 1 -mindepth 1 -name "*.deb" | xargs -I {} scp {} "$SCP_DST" 
+  scp_debs "$TB_PACKAGES_DIR" "rocm-transfer-bench"
 fi
