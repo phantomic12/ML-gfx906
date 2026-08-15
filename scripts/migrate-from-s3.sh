@@ -32,14 +32,18 @@ while read -r fname fsize; do
     echo "FAILED: $fname"; exit 1
   }
 done < <(awk '/^Filename: /{f=$2} /^Size: /{print f, $2}' "$WORK/Packages")
+if [ "$TOTAL" -eq 0 ]; then
+  echo "no packages listed in $WORK/Packages, nothing to migrate" >&2
+  exit 1
+fi
 echo "    downloaded $TOTAL unique debs: $(du -sh "$WORK/debs" | cut -f1)"
 
 echo "==> Creating release $RELEASE_TAG"
-gh release view "$RELEASE_TAG" >/dev/null 2>&1 \
-  || gh release create "$RELEASE_TAG" \
-       --title "$RELEASE_TAG" \
-       --notes "gfx906 package build (migrated from s3.arkprojects.space)" \
-       || true
+if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+  gh release create "$RELEASE_TAG" \
+    --title "$RELEASE_TAG" \
+    --notes "gfx906 package build (migrated from s3.arkprojects.space)"
+fi
 
 echo "==> Uploading assets (this is the long step)"
 gh release upload "$RELEASE_TAG" "$WORK"/debs/*.deb --clobber

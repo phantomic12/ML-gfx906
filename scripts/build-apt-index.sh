@@ -29,23 +29,34 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 
 ARCH=amd64
-DISTS="$SITE_DIR/dists/$DISTRIBUTION"
-BIN="$DISTS/main/binary-$ARCH"
 
 command -v apt-ftparchive >/dev/null || { echo "missing apt-ftparchive (apt-utils)"; exit 1; }
 command -v gpg >/dev/null || { echo "missing gpg (gnupg)"; exit 1; }
 
 echo "==> Cleaning $SITE_DIR"
 rm -rf "$SITE_DIR"
+mkdir -p "$SITE_DIR"
+# absolute, so the "cd $SITE_DIR" below can not turn later paths into no-ops
+SITE_DIR="$(cd "$SITE_DIR" && pwd)"
+DISTS="$SITE_DIR/dists/$DISTRIBUTION"
+BIN="$DISTS/main/binary-$ARCH"
 mkdir -p "$BIN" "$SITE_DIR/pool"
 
 echo "==> Staging debs from $DEBS_DIR"
 DEB_COUNT=0
 for deb in "$DEBS_DIR"/*.deb; do
   [ -f "$deb" ] || continue
-  cp -n "$deb" "$SITE_DIR/pool/"
+  if [ -e "$SITE_DIR/pool/$(basename "$deb")" ]; then
+    echo "duplicate package name: $(basename "$deb")" >&2
+    exit 1
+  fi
+  cp "$deb" "$SITE_DIR/pool/"
   DEB_COUNT=$((DEB_COUNT + 1))
 done
+if [ "$DEB_COUNT" -eq 0 ]; then
+  echo "no .deb files found in $DEBS_DIR, refusing to publish an empty index" >&2
+  exit 1
+fi
 echo "    staged $DEB_COUNT debs ($(du -sh "$SITE_DIR/pool" | cut -f1))"
 
 echo "==> Generating Packages"
@@ -54,10 +65,22 @@ apt-ftparchive packages ./pool > Packages.tmp
 # Rewrite relative pool paths to absolute GitHub Release asset URLs
 sed -E "s|^Filename: \.//*pool/|Filename: $BASE_URL/$RELEASE_TAG/|" Packages.tmp > "$BIN/Packages"
 rm -f Packages.tmp
+# Any leftover relative path would make apt fetch from Pages instead of Releases
+if grep -qE '^Filename: \.?/' "$BIN/Packages"; then
+  echo "Filename rewrite failed, relative paths left in Packages:" >&2
+  grep -E '^Filename: \.?/' "$BIN/Packages" >&2
+  exit 1
+fi
 gzip -9 -c "$BIN/Packages" > "$BIN/Packages.gz"
-xz -9 -c "$BIN/Packages" > "$BIN/Packages.xz" 2>/dev/null || true
+if command -v xz >/dev/null; then
+  xz -9 -c "$BIN/Packages" > "$BIN/Packages.xz"
+else
+  echo "    xz not found, skipping Packages.xz"
+fi
 if command -v zstd >/dev/null; then
   zstd -q -c "$BIN/Packages" > "$BIN/Packages.zst"
+else
+  echo "    zstd not found, skipping Packages.zst"
 fi
 
 echo "==> Generating Release"
@@ -80,10 +103,22 @@ gpg --batch --yes --pinentry-mode loopback --passphrase '' \
 
 echo "==> Dropping payload (debs stay in Releases, not Pages)"
 rm -rf "$SITE_DIR/pool"
+if [ -e "$SITE_DIR/pool" ]; then
+  echo "failed to drop $SITE_DIR/pool, refusing to publish deb payload to Pages" >&2
+  exit 1
+fi
 
 echo "==> Copying pubkey / landing page"
-[ -f "$REPO_ROOT/pubkey.asc" ] && cp "$REPO_ROOT/pubkey.asc" "$SITE_DIR/pubkey.asc"
-[ -f "$REPO_ROOT/index.html" ] && cp "$REPO_ROOT/index.html" "$SITE_DIR/index.html"
+if ! [ -f "$REPO_ROOT/pubkey.asc" ]; then
+  echo "missing $REPO_ROOT/pubkey.asc, apt clients could not verify the repo" >&2
+  exit 1
+fi
+cp "$REPO_ROOT/pubkey.asc" "$SITE_DIR/pubkey.asc"
+if [ -f "$REPO_ROOT/index.html" ]; then
+  cp "$REPO_ROOT/index.html" "$SITE_DIR/index.html"
+else
+  echo "    no index.html, skipping landing page"
+fi
 
 echo "==> Done"
 find "$SITE_DIR" -type f | sort

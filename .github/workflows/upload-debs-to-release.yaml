@@ -23,22 +23,28 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Upload debs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          DEB_PATHS: ${{ inputs.deb_paths }}
         run: |
-          # shellcheck disable=SC2086
-          DEBS=$(find . -path ./node_modules -prune -o -name '*.deb' -print 2>/dev/null | head -500 || true)
-          # Respect user globs
-          FILES=""
-          for g in ${{ inputs.deb_paths }}; do
-            FILES="$FILES $(ls -1 $g 2>/dev/null || true)"
+          set -euo pipefail
+          FILES=()
+          for g in $DEB_PATHS; do
+            # shellcheck disable=SC2086
+            MATCHED=($(ls -1 $g)) || {
+              echo "No files matched glob: $g" >&2
+              exit 1
+            }
+            FILES+=("${MATCHED[@]}")
           done
-          if [ -z "$FILES" ]; then
-            echo "No .deb files matched: ${{ inputs.deb_paths }}"
+          if [ ${#FILES[@]} -eq 0 ]; then
+            echo "No .deb files matched: $DEB_PATHS" >&2
             exit 1
           fi
-          # shellcheck disable=SC2086
-          gh release view "${{ inputs.release_tag }}" >/dev/null 2>&1 \
-            || gh release create "${{ inputs.release_tag }}" --title "${{ inputs.release_tag }}" --notes "gfx906 package build" || true
-          # shellcheck disable=SC2086
-          gh release upload "${{ inputs.release_tag }}" $FILES --clobber
+          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --title "$RELEASE_TAG" --notes "gfx906 package build"
+          fi
+          gh release upload "$RELEASE_TAG" "${FILES[@]}" --clobber
           echo "Uploaded:"
-          ls -lh $FILES
+          ls -lh "${FILES[@]}"

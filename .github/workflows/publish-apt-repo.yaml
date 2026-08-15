@@ -38,13 +38,22 @@ jobs:
 
       - name: Determine release tag
         id: tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_TAG: ${{ inputs.release_tag }}
+          EVENT_TAG: ${{ github.event.release.tag_name }}
         run: |
-          if [ -n "${{ inputs.release_tag }}" ]; then
-            TAG="${{ inputs.release_tag }}"
+          set -euo pipefail
+          if [ -n "$INPUT_TAG" ]; then
+            TAG="$INPUT_TAG"
           elif [ "${{ github.event_name }}" = "release" ]; then
-            TAG="${{ github.event.release.tag_name }}"
+            TAG="$EVENT_TAG"
           else
             TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
+          fi
+          if [ -z "$TAG" ]; then
+            echo "Could not determine a release tag to publish" >&2
+            exit 1
           fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "Using release: $TAG"
@@ -58,14 +67,28 @@ jobs:
         env:
           GPG_PRIVATE_KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
         run: |
+          set -euo pipefail
+          if [ -z "$GPG_PRIVATE_KEY" ] || [ -z "$KEY_ID" ]; then
+            echo "APT_GPG_PRIVATE_KEY secret and APT_KEY_ID variable are required" >&2
+            exit 1
+          fi
           echo "$GPG_PRIVATE_KEY" | gpg --batch --import
           echo "$KEY_ID:6:" | gpg --batch --import-ownertrust
 
       - name: Download .deb assets from release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
         run: |
+          set -euo pipefail
           mkdir -p debs
-          gh release download "${{ steps.tag.outputs.tag }}" --pattern '*.deb' --dir debs
-          echo "Downloaded $(find debs -name '*.deb' | wc -l) debs:"
+          gh release download "$RELEASE_TAG" --pattern '*.deb' --dir debs
+          DEB_COUNT=$(find debs -name '*.deb' | wc -l)
+          if [ "$DEB_COUNT" -eq 0 ]; then
+            echo "Release $RELEASE_TAG has no .deb assets" >&2
+            exit 1
+          fi
+          echo "Downloaded $DEB_COUNT debs:"
           du -sh debs
 
       - name: Build apt index (Packages + Release + InRelease)

@@ -1,11 +1,11 @@
 #/bin/bash
-set -e
+set -eo pipefail
 
 cd $(dirname $0)
 source ../env.sh 'rocm-tensile' 'rocm'
 
 DOCKER_EXTRA_ARGS=()
-mkdir ./logs || true
+mkdir -p ./logs
 docker buildx build ${DOCKER_EXTRA_ARGS[@]} \
   --build-arg ROCM_IMAGE="${PATCHED_ROCM_IMAGE}:${TENSILE_ROCM_VERSION}-complete" \
   --build-arg ROCM_ARCH="${ROCM_ARCH}" \

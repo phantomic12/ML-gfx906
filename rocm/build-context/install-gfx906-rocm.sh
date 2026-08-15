@@ -1,9 +1,20 @@
 #!/bin/bash
 set -eo pipefail
 
+if [ -z "${ROCM_BUILD:-}" ]; then
+  echo "ERROR: ROCM_BUILD is not set" >&2
+  exit 1
+fi
+
 echo "Searching rocm $ROCM_BUILD packages"
-MAJOR_MINOR=$(echo "$ROCM_BUILD" | grep -oE '^[0-9]+\.[0-9]+')
-GPU_TARGET=$(echo "$ROCM_BUILD" | grep -oE 'gfx[0-9]+')
+MAJOR_MINOR=$(grep -oE '^[0-9]+\.[0-9]+' <<< "$ROCM_BUILD") || {
+  echo "ERROR: no <major>.<minor> version in ROCM_BUILD=$ROCM_BUILD" >&2
+  exit 1
+}
+GPU_TARGET=$(grep -oE 'gfx[0-9]+' <<< "$ROCM_BUILD") || {
+  echo "ERROR: no gfx target in ROCM_BUILD=$ROCM_BUILD" >&2
+  exit 1
+}
 ROCM_PACKAGES=(
   amdrocm${MAJOR_MINOR}=${ROCM_BUILD}
   amdrocm-core-sdk${MAJOR_MINOR}=${ROCM_BUILD} 
