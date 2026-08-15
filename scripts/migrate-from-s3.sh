@@ -12,8 +12,8 @@ set -euo pipefail
 
 RELEASE_TAG="${1:-20260802001858}"
 S3_BASE="https://s3.arkprojects.space/apt-gfx906/ubuntu"
-WORK="$(mktemp -d)"
-trap 'rm -rf "$WORK"' EXIT
+WORK="${MIGRATE_DIR:-migrate-debs}"
+mkdir -p "$WORK/debs"
 
 echo "==> Fetching current Packages index from homelab S3"
 curl -fsSL -m 120 "$S3_BASE/dists/noble/main/binary-amd64/Packages" -o "$WORK/Packages"

@@ -25,6 +25,8 @@ RELEASE_TAG="${RELEASE_TAG:?RELEASE_TAG required}"
 BASE_URL="${BASE_URL:?BASE_URL required (e.g. https://github.com/owner/repo/releases/download)}"
 SITE_DIR="${SITE_DIR:-site}"
 KEY_ID="${KEY_ID:?KEY_ID required (GPG signing key id)}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 
 ARCH=amd64
 DISTS="$SITE_DIR/dists/$DISTRIBUTION"
@@ -50,7 +52,7 @@ echo "==> Generating Packages"
 cd "$SITE_DIR"
 apt-ftparchive packages ./pool > Packages.tmp
 # Rewrite relative pool paths to absolute GitHub Release asset URLs
-sed -E "s|^Filename: pool/|Filename: $BASE_URL/$RELEASE_TAG/|" Packages.tmp > "$BIN/Packages"
+sed -E "s|^Filename: \.//*pool/|Filename: $BASE_URL/$RELEASE_TAG/|" Packages.tmp > "$BIN/Packages"
 rm -f Packages.tmp
 gzip -9 -c "$BIN/Packages" > "$BIN/Packages.gz"
 xz -9 -c "$BIN/Packages" > "$BIN/Packages.xz" 2>/dev/null || true
@@ -80,8 +82,8 @@ echo "==> Dropping payload (debs stay in Releases, not Pages)"
 rm -rf "$SITE_DIR/pool"
 
 echo "==> Copying pubkey / landing page"
-[ -f pubkey.asc ] && cp pubkey.asc "$SITE_DIR/pubkey.asc"
-[ -f index.html ] && cp index.html "$SITE_DIR/index.html"
+[ -f "$REPO_ROOT/pubkey.asc" ] && cp "$REPO_ROOT/pubkey.asc" "$SITE_DIR/pubkey.asc"
+[ -f "$REPO_ROOT/index.html" ] && cp "$REPO_ROOT/index.html" "$SITE_DIR/index.html"
 
 echo "==> Done"
 find "$SITE_DIR" -type f | sort

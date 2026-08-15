@@ -1,1 +1,2 @@
-/**/*.log
+migrate-debs/
+*.log
