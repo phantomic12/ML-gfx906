@@ -1,22 +1,17 @@
-name: Publish APT repo to GitHub Pages
+name: Publish APT repo to GitHub Releases
 
 on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Release tag whose *.deb assets become the apt index (empty = latest release)'
+        description: 'Release tag whose *.deb assets become the apt repo (empty = latest release)'
         required: false
-        type: string
-      distribution:
-        description: 'apt suite/codename (matches Ubuntu codename, e.g. noble)'
-        required: false
-        default: noble
         type: string
   release:
     types: [published]
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -25,7 +20,6 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  DISTRIBUTION: ${{ inputs.distribution || 'noble' }}
   KEY_ID: ${{ vars.APT_KEY_ID }}
 
 jobs:
@@ -91,12 +85,22 @@ jobs:
           echo "Downloaded $DEB_COUNT debs:"
           du -sh debs
 
-      - name: Build apt index (Packages + Release + InRelease)
+      - name: Build flat apt index (Packages + Release + InRelease)
         env:
+          DEBS_DIR: debs
           RELEASE_TAG: ${{ steps.tag.outputs.tag }}
-          BASE_URL: https://github.com/${{ github.repository }}/releases/download
           SITE_DIR: site
         run: ./scripts/build-apt-index.sh
+
+      - name: Upload index files to release (flat repo)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ steps.tag.outputs.tag }}" \
+            site/Packages site/Packages.gz site/Packages.xz \
+            site/Release site/InRelease site/Release.gpg \
+            site/pubkey.asc --clobber
+          echo "Index uploaded to release ${{ steps.tag.outputs.tag }}"
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
@@ -108,4 +112,3 @@ jobs:
 
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
-# re-register
