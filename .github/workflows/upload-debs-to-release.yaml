@@ -42,3 +42,4 @@ jobs:
           gh release upload "${{ inputs.release_tag }}" $FILES --clobber
           echo "Uploaded:"
           ls -lh $FILES
+# re-register
