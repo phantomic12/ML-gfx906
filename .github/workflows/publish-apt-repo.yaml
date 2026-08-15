@@ -12,13 +12,9 @@ on:
         required: false
         default: noble
         type: string
-  release:
-    types: [published]
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
@@ -29,22 +25,29 @@ env:
   KEY_ID: ${{ vars.APT_KEY_ID }}
 
 jobs:
-  publish:
+  build:
     runs-on: ubuntu-latest
+    # Holds APT_GPG_PRIVATE_KEY. Pages deployment happens in the separate
+    # `deploy` job, which must run in the `github-pages` environment.
     environment: apt-signing
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Determine release tag
         id: tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
-          if [ -n "${{ inputs.release_tag }}" ]; then
-            TAG="${{ inputs.release_tag }}"
-          elif [ "${{ github.event_name }}" = "release" ]; then
-            TAG="${{ github.event.release.tag_name }}"
+          if [ -n "$INPUT_RELEASE_TAG" ]; then
+            TAG="$INPUT_RELEASE_TAG"
           else
             TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
+          fi
+          if [ -z "$TAG" ]; then
+            echo "could not determine a release tag"
+            exit 1
           fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "Using release: $TAG"
@@ -52,19 +55,30 @@ jobs:
       - name: Install deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y apt-utils dpkg-dev gnupg
+          sudo apt-get install -y apt-utils dpkg-dev gnupg zstd
 
       - name: Import GPG signing key
         env:
           GPG_PRIVATE_KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
         run: |
+          if [ -z "$KEY_ID" ]; then
+            echo "repository variable APT_KEY_ID is not set"
+            exit 1
+          fi
+          if [ -z "$GPG_PRIVATE_KEY" ]; then
+            echo "repository secret APT_GPG_PRIVATE_KEY is not set"
+            exit 1
+          fi
           echo "$GPG_PRIVATE_KEY" | gpg --batch --import
           echo "$KEY_ID:6:" | gpg --batch --import-ownertrust
 
       - name: Download .deb assets from release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
         run: |
           mkdir -p debs
-          gh release download "${{ steps.tag.outputs.tag }}" --pattern '*.deb' --dir debs
+          gh release download "$RELEASE_TAG" --pattern '*.deb' --dir debs
           echo "Downloaded $(find debs -name '*.deb' | wc -l) debs:"
           du -sh debs
 
@@ -75,14 +89,22 @@ jobs:
           SITE_DIR: site
         run: ./scripts/build-apt-index.sh
 
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: site
 
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
       - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
-# re-register

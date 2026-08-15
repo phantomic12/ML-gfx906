@@ -26,7 +26,7 @@ sudo chmod a+r /etc/apt/keyrings/apt-gfx906.asc
 sudo tee /etc/apt/sources.list.d/gfx906.sources &lt;&lt;EOF
 Types: deb
 URIs: https://phantomic12.github.io/ML-gfx906
-Suites: $(. /etc/os-release &amp;&amp; echo "$VERSION_CODENAME")
+Suites: noble
 Components: main
 Architectures: $(dpkg --print-architecture)
 Signed-By: /etc/apt/keyrings/apt-gfx906.asc
