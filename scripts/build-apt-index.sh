@@ -27,6 +27,8 @@ SITE_DIR="${SITE_DIR:-site}"
 KEY_ID="${KEY_ID:?KEY_ID required (GPG signing key id)}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
+mkdir -p "$SITE_DIR"
+SITE_DIR="$(cd "$SITE_DIR" && pwd)"
 
 ARCH=amd64
 DISTS="$SITE_DIR/dists/$DISTRIBUTION"
