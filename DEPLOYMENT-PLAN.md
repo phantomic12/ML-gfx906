@@ -21,26 +21,31 @@ default.
 ```
 GitHub repo phantomic12/ML-gfx906
 ├── master        build recipes (mirror of upstream)
-├── Pages         dists/noble/... index (few hundred KB)  ← apt sources point here
-└── Releases      *.deb assets (up to 2 GB each)           ← payload, per timestamp tag
+├── Releases      FLAT apt repo: *.deb + Packages + Release + InRelease per tag
+└── Pages         pubkey.asc + index.html + index copies (docs only)
 
 User machine:
-  deb https://phantomic12.github.io/ML-gfx906 noble main
-      └─ apt fetches Packages (Pages) → downloads .deb (Release URL, 302 to CDN)
-         → verifies SHA256 → installs
+  deb [signed-by=...] https://github.com/phantomic12/ML-gfx906/releases/download/<tag> ./
+      └─ apt fetches Packages/InRelease from the release tag (flat repo)
+         → downloads .deb (302 to release-assets CDN) → verifies SHA256 → installs
 ```
 
-## Why not Pages-only
+## Why flat (`deb URL ./`), not dists-on-Pages
+
+- apt cannot fetch absolute `Filename:` URLs — it always joins
+  `base URI + Filename` (verified empirically: apt requested
+  `https://<pages>/https://github.com/...`). So the index must live at the
+  same base as the debs.
+- GitHub release assets are flat (slashes in asset names rejected, 404 — verified).
+- Flat repo format (`deb URL ./`) makes apt fetch `Packages`/`InRelease` at the
+  repo root → maps 1:1 onto release assets. Index + debs in the SAME release.
+
+## Why not Pages-only / Releases-only
 
 - git hard-caps files at 100 MB per push; Pages caps published sites at 1 GB.
-  325 MB debs can't live in git, and one build set alone exceeds the Pages site cap.
-- Releases allow 2 GB per asset. Hence the split.
-
-## Why not Releases-only
-
-- apt needs a `dists/<suite>/.../Packages` tree. You can stuff the index into a
-  release, but then every release must re-upload the whole index and the
-  sources URL is version-specific. Pages gives a stable, canonical URL.
+  325 MB debs can't live in git, and one build set (~1.45 GB) exceeds the Pages cap.
+- The whole apt tree in a release is exactly what the flat format enables; no
+  separate index host needed.
 
 ## Migration steps
 
@@ -50,11 +55,12 @@ User machine:
 4. ✅ Generate apt signing key (ed25519, no passphrase). Private key → Actions
    secret `APT_GPG_PRIVATE_KEY`; id → variable `APT_KEY_ID`; public key →
    `pubkey.asc` in repo and in the Pages artifact.
-5. ⏳ Migrate payload: `scripts/migrate-from-s3.sh` downloads the 145 debs
+5. ✅ Migrate payload: `scripts/migrate-from-s3.sh` downloads the 145 debs
    (~1.45 GB) from homelab S3 and uploads them to release `20260802001858`.
-6. ⏳ Run **Publish APT repo to GitHub Pages** workflow → index live.
-7. ⏳ Verify from a clean machine: `apt-get update`, `apt-get download` a small
-   package, compare SHA256, install a trivial package.
+6. ✅ Run **Publish APT repo to GitHub Releases** workflow → flat index
+   (`Packages`/`Release`/`InRelease`) uploaded into the same release.
+7. ✅ Verify from a clean machine: `apt-get update`, `apt-get download` a small
+   package, SHA256 match against `Packages` (verified on this WSL box).
 
 ## Operations (new build set, every ~day)
 
@@ -62,9 +68,14 @@ User machine:
    upstream change: replace scp with `gh release upload`, or use
    `upload-debs-to-release.yaml`).
 2. Upload to a timestamped release (e.g. `20260815235900`).
-3. Index workflow regenerates Pages from that release's assets.
-4. Old release can be deleted to reclaim repo storage — the index always points
-   at the latest set. (Matches upstream's rolling-latest model.)
+3. Run the **Publish APT repo to GitHub Releases** workflow — it downloads the
+   release's debs, regenerates the flat index, uploads the index back to the
+   same release, deploys Pages.
+4. **Rolling latest (recommended for users):** keep a `latest` release
+   (delete + recreate per build set) and point users at
+   `URIs: .../releases/download/latest` with `Suites: ./`. URL stays stable;
+   old builds vanish from the apt view. Timestamped releases remain as archive.
+5. Old releases can be deleted to reclaim repo storage (~1.45 GB each).
 
 ## Limits & tradeoffs (GitHub Free, public repo)
 
@@ -97,18 +108,20 @@ To adopt upstream (not a fork, so no PR):
    `.github/workflows/upload-debs-to-release.yaml`, `scripts/`,
    `index.html`, `pubkey.asc` into their repo.
 2. Add `APT_GPG_PRIVATE_KEY` (repo secret) + `APT_KEY_ID` (repo variable).
-3. Enable Pages → Source: GitHub Actions.
-4. In each `build-and-push.deb.sh`: replace the `scp` block with
-   `gh release upload "$RELEASE_TAG" .../*.deb --clobber` and either push a
-   timestamp tag or trigger the publish workflow after upload.
-5. Update README `URIs:` to `https://<owner>.github.io/<repo>`.
-6. Point the homelab S3 sync job at GitHub (or retire it once the archive is
+4. Enable Pages → Source: GitHub Actions (serves `pubkey.asc` + landing page).
+5. In each `build-and-push.deb.sh`: replace the `scp` block with
+   `gh release upload "$RELEASE_TAG" .../*.deb --clobber` and push a
+   timestamp tag, then run the publish workflow.
+6. Update README `URIs:` to `https://github.com/<owner>/<repo>/releases/download/latest`
+   with `Suites: ./` (or a pinned timestamp tag).
+7. Point the homelab S3 sync job at GitHub (or retire it once the archive is
    drained).
 
-## Verification checklist (acceptance)
+## Verification checklist (acceptance — all passed 2026-08-15)
 
-- [ ] `apt-get update` succeeds with `Signed-By` keyring (no `trusted=yes`)
-- [ ] `apt-get download amdrocm-rand7.14-gfx906` yields deb whose SHA256 matches `Packages`
-- [ ] `apt-cache policy` shows version from GitHub index
-- [ ] curl the `.deb` URL: 302 → release-assets CDN, 200 on follow
-- [ ] index deploys via Actions (Pages build_type=workflow), no branch needed
+- [x] `apt-get update` succeeds with `Signed-By` keyring (no `trusted=yes`)
+- [x] `apt-get download amdrocm-amdsmi7.14` SHA256 matches `Packages`
+- [x] deb metadata valid (`dpkg-deb -I`)
+- [x] curl the `.deb` URL: 302 → release-assets CDN, 200 on follow
+- [x] index (`Packages`/`InRelease`) uploaded to the release; Pages serves pubkey
+- [ ] (optional) install a trivial package as root on a clean Ubuntu 24.04
