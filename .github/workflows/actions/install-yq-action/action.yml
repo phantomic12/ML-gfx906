@@ -1,10 +1,26 @@
 name: Install yq
 description: "Install yq"
+inputs:
+  version:
+    description: "yq release tag to install"
+    required: false
+    default: "v4.44.6"
+  sha256:
+    description: "Expected sha256 of yq_linux_amd64 for the pinned version"
+    required: false
+    default: "0c2b24e645b57d8e7c0566d18643a6d4f5580feeea3878127354a46f2a1e4598"
 runs:
   using: "composite"
   steps:
     - name: Install yq
       shell: bash
+      env:
+        YQ_VERSION: ${{ inputs.version }}
+        YQ_SHA256: ${{ inputs.sha256 }}
       run: |
-        wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
-        chmod +x /usr/local/bin/yq
+        set -euo pipefail
+        wget -q "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -O /tmp/yq
+        echo "${YQ_SHA256}  /tmp/yq" | sha256sum -c -
+        sudo install -m 0755 /tmp/yq /usr/local/bin/yq
+        rm -f /tmp/yq
+        yq --version
