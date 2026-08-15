@@ -48,3 +48,4 @@ jobs:
           gh release upload "$RELEASE_TAG" "${FILES[@]}" --clobber
           echo "Uploaded:"
           ls -lh "${FILES[@]}"
+# re-register

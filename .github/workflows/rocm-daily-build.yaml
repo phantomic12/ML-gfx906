@@ -38,3 +38,4 @@ jobs:
           export ROCM_VERSION="${{ matrix.build.rocm_version }}"
           export ROCM_BUILD="${{ matrix.build.rocm_build }}"
           ./build-and-push.image.sh
+# re-register

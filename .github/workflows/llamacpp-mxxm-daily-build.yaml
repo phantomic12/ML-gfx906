@@ -56,3 +56,4 @@ jobs:
           fi
           export LLAMA_PRESET_NAME="${LLAMA_BRANCH}-rocm-${LLAMA_ROCM_VERSION}-mxxm"
           ./build-and-push.image.sh
+# re-register
