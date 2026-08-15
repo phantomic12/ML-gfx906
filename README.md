@@ -1,5 +1,10 @@
 # ML software for deprecated GFX906 arch
 
+> **Mirror note:** this repo is a GitHub-hosted mirror with the apt repository
+> served entirely from GitHub (Pages + Releases). See
+> [README-APT-GITHUB.md](./README-APT-GITHUB.md) for install/publish instructions
+> and [DEPLOYMENT-PLAN.md](./DEPLOYMENT-PLAN.md) for the migration plan.
+
 ![GitHub License](https://img.shields.io/github/license/mixa3607/ML-gfx906?style=flat-square)
 [<img src="https://img.shields.io/badge/discord-gfx906-green?style=flat-square">](https://discord.gg/EgsTWBqPr)
 [<img src="https://img.shields.io/badge/docs-arkprojects.space%2Fwiki-green?style=flat-square">](https://arkprojects.space/wiki/AMD_GFX906)
