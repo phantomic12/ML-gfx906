@@ -93,6 +93,14 @@ jobs:
             site/pubkey.asc --clobber
           echo "Index uploaded to release $TAG"
 
+      # Mirror the index onto Pages for inspection; the debs stay in the release
+      # (Pages caps sites at 1 GB, a build set is ~1.4 GB), so apt must keep
+      # using the release URL as its base URI.
+      - name: Mirror index files onto Pages
+        run: |
+          cp site/Packages site/Packages.gz site/Packages.xz \
+             site/Release site/InRelease site/Release.gpg pages/
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
