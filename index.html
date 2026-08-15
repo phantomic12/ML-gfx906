@@ -9,13 +9,12 @@
     code, pre { background: #f4f4f5; padding: .15em .4em; border-radius: 4px; font-size: .92em; }
     pre { padding: 1rem; overflow-x: auto; }
     h1 { font-size: 1.6rem; }
-    .key { word-break: break-all; }
   </style>
 </head>
 <body>
-  <h1>gfx906 apt repository (GitHub Pages)</h1>
+  <h1>gfx906 apt repository (GitHub Releases)</h1>
   <p>Debian/Ubuntu packages for AMD gfx906 GPUs (Radeon VII / MI50 / MI60).
-     Payload hosted on GitHub Releases, index served from Pages.</p>
+     Flat apt repo hosted in GitHub Releases, key + docs served from Pages.</p>
 
   <h2>Install (Ubuntu 24.04 / noble)</h2>
 <pre>sudo apt-get update
@@ -25,10 +24,8 @@ sudo curl -fsSL https://phantomic12.github.io/ML-gfx906/pubkey.asc -o /etc/apt/k
 sudo chmod a+r /etc/apt/keyrings/apt-gfx906.asc
 sudo tee /etc/apt/sources.list.d/gfx906.sources &lt;&lt;EOF
 Types: deb
-URIs: https://phantomic12.github.io/ML-gfx906
-Suites: noble
-Components: main
-Architectures: $(dpkg --print-architecture)
+URIs: https://github.com/phantomic12/ML-gfx906/releases/download/20260802001858
+Suites: ./
 Signed-By: /etc/apt/keyrings/apt-gfx906.asc
 EOF
 sudo apt-get update</pre>
@@ -36,8 +33,8 @@ sudo apt-get update</pre>
   <h2>Files</h2>
   <ul>
     <li><a href="pubkey.asc">pubkey.asc</a> — repository signing key (public)</li>
-    <li><a href="dists/noble/InRelease">dists/noble/InRelease</a> — signed release index</li>
-    <li><a href="dists/noble/main/binary-amd64/Packages">dists/noble/main/binary-amd64/Packages</a></li>
   </ul>
+  <p>Repository index and packages live in
+     <a href="https://github.com/phantomic12/ML-gfx906/releases">GitHub Releases</a>.</p>
 </body>
 </html>
