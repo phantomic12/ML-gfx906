@@ -83,13 +83,20 @@ jobs:
             site/pubkey.asc --clobber
           echo "Index uploaded to release ${{ steps.tag.outputs.tag }}"
 
+      - name: Stage Pages files (index only, no debs)
+        run: |
+          mkdir -p site-docs
+          cp site/Packages site/Packages.gz site/Packages.xz \
+             site/Release site/InRelease site/Release.gpg \
+             site/pubkey.asc site/index.html site-docs/
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: site
+          path: site-docs
 
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
