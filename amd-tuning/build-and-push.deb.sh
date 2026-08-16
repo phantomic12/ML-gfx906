@@ -41,6 +41,10 @@ docker buildx build "${DOCKER_EXTRA_ARGS[@]}" ./build-context \
 
 if [ "$AMD_TUNING_PUSH" = "1" ]; then
   SCP_DST="k3s@kube-worker6.arkprojects.lan:/home/k3s/rocm-dev-packages/amd-tuning"
-  find "$AMD_TUNING_PACKAGES_DIR" -maxdepth 1 -mindepth 1 -name "*.deb" \
-    -exec scp {} "$SCP_DST" \;
+  mapfile -t DEBS < <(find "$AMD_TUNING_PACKAGES_DIR" -maxdepth 1 -mindepth 1 -name "*.deb")
+  if [ ${#DEBS[@]} -eq 0 ]; then
+    echo "ERROR: no .deb files in $AMD_TUNING_PACKAGES_DIR to push" >&2
+    exit 1
+  fi
+  scp "${DEBS[@]}" "$SCP_DST"
 fi

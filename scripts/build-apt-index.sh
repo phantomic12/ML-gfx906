@@ -52,6 +52,12 @@ echo "==> Staging debs from $DEBS_DIR"
 DEB_COUNT=0
 for deb in "$DEBS_DIR"/*.deb; do
   [ -f "$deb" ] || continue
+  # Flat repo: same-basename debs would overwrite each other and disappear
+  # from the index without any error.
+  if [ -e "$SITE_DIR/$(basename "$deb")" ]; then
+    echo "duplicate package file name $(basename "$deb") in $DEBS_DIR"
+    exit 1
+  fi
   cp "$deb" "$SITE_DIR/"
   DEB_COUNT=$((DEB_COUNT + 1))
 done

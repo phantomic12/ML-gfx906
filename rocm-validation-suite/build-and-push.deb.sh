@@ -38,11 +38,16 @@ DOCKER_EXTRA_ARGS=(
   --output "type=local,dest=$RVS_PACKAGES_DIR"
 )
 
-mkdir -p ./logs || true
+mkdir -p ./logs
 docker buildx build "${DOCKER_EXTRA_ARGS[@]}" ./build-context 2>&1 | tee ./logs/build_$(date +%Y%m%d%H%M%S).log
 
 # Push packages
 if [ "$RVS_PUSH" == "1" ]; then
   SCP_DST="k3s@kube-worker6.arkprojects.lan:/home/k3s/rocm-dev-packages/rocm-validation-suite"
-  find "$RVS_PACKAGES_DIR" -maxdepth 1 -mindepth 1 -name "*.deb" | xargs -I {} scp {} "$SCP_DST" 
+  mapfile -t DEBS < <(find "$RVS_PACKAGES_DIR" -maxdepth 1 -mindepth 1 -name "*.deb")
+  if [ ${#DEBS[@]} -eq 0 ]; then
+    echo "ERROR: no .deb files in $RVS_PACKAGES_DIR to push" >&2
+    exit 1
+  fi
+  scp "${DEBS[@]}" "$SCP_DST"
 fi

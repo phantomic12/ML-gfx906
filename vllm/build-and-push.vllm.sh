@@ -1,5 +1,5 @@
 #/bin/bash
-set -e
+set -eo pipefail
 
 cd $(dirname $0)
 source ../env.sh "vllm" "pytorch"
@@ -9,7 +9,7 @@ IMAGE_TAGS=(
   "${VLLM_IMAGE}:${VLLM_PRESET_NAME}"
 )
 
-if docker_image_pushed ${IMAGE_TAGS[0]}; then
+if docker_image_pushed_or_fail "${IMAGE_TAGS[0]}"; then
   echo "${IMAGE_TAGS[0]} already in registry. Skip"
   exit 0
 fi

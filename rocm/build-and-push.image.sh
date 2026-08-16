@@ -31,7 +31,7 @@ for key in "${!IMAGE_ANNOTATIONS[@]}"; do
   DOCKER_EXTRA_ARGS+=("--annotation" "${key}=${IMAGE_ANNOTATIONS[$key]}")
 done
 
-if docker_image_pushed ${IMAGE_TAGS[0]}; then
+if docker_image_pushed_or_fail "${IMAGE_TAGS[0]}"; then
   echo -n "${IMAGE_TAGS[0]} already in registry. "
   if [ "$ROCM_FORCE_BUILD" == "1" ]; then
     echo "Force build..."
@@ -56,6 +56,6 @@ if [ "$ROCM_PUSH" == "1" ]; then
   )
 fi
 
-mkdir -p ./logs || true
+mkdir -p ./logs
 echo "Install ROCm packages to image"
 docker buildx build "${DOCKER_EXTRA_ARGS[@]}" ./build-context 2>&1 | tee ./logs/build_$(date +%Y%m%d%H%M%S).log
