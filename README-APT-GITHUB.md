@@ -35,6 +35,9 @@ sudo apt-get update
 
 One-line form: `deb [signed-by=/etc/apt/keyrings/apt-gfx906.asc] https://github.com/phantomic12/ML-gfx906/releases/download/20260802001858 ./`
 
+> Verification: see the **Test the repository** section in [README.md](./README.md)
+> for safe end-to-end checks (apt update, package resolution, SHA256 vs index).
+
 > **Rolling latest:** for a moving `latest` tag (delete+recreate per build set),
 > use `URIs: .../releases/download/latest` instead. See DEPLOYMENT-PLAN.md.
 
