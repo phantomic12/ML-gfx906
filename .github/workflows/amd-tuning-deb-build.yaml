@@ -10,6 +10,9 @@ on:
     paths:
       - "amd-tuning/**"
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
