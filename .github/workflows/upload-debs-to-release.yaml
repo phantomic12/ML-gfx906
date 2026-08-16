@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Upload debs
         env:
@@ -28,18 +28,15 @@ jobs:
           RELEASE_TAG: ${{ inputs.release_tag }}
           DEB_PATHS: ${{ inputs.deb_paths }}
         run: |
-          set -euo pipefail
+          shopt -s globstar nullglob
           FILES=()
           for g in $DEB_PATHS; do
-            # shellcheck disable=SC2086
-            MATCHED=($(ls -1 $g)) || {
-              echo "No files matched glob: $g" >&2
-              exit 1
-            }
-            FILES+=("${MATCHED[@]}")
+            for f in $g; do
+              [ -f "$f" ] && FILES+=("$f")
+            done
           done
           if [ ${#FILES[@]} -eq 0 ]; then
-            echo "No .deb files matched: $DEB_PATHS" >&2
+            echo "No .deb files matched: $DEB_PATHS"
             exit 1
           fi
           if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
@@ -48,4 +45,3 @@ jobs:
           gh release upload "$RELEASE_TAG" "${FILES[@]}" --clobber
           echo "Uploaded:"
           ls -lh "${FILES[@]}"
-# re-register
