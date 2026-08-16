@@ -32,6 +32,7 @@ echo "IS_RELEASE:       ${LLAMA_IS_RELEASE}"
 
 DOCKER_EXTRA_ARGS=()
 append_tags_and_annotations_args
+
 skip_if_image_pushed "${IMAGE_TAGS[0]}" "$LLAMA_FORCE_BUILD"
 
 DOCKER_EXTRA_ARGS+=(

@@ -1,5 +1,5 @@
 #/bin/bash
-set -e
+set -eo pipefail
 
 cd $(dirname $0)
 source ../env.sh "pytorch" "rocm"
@@ -28,6 +28,7 @@ echo "PUSH:                 ${TORCH_PUSH}"
 
 DOCKER_EXTRA_ARGS=()
 append_tags_and_annotations_args
+
 skip_if_image_pushed "${IMAGE_TAGS[0]}" "$TORCH_FORCE_BUILD"
 
 DOCKER_EXTRA_ARGS+=(

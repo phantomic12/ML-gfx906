@@ -41,11 +41,16 @@ if [ "$TORCH_PUSH" == "1" ]; then
     echo "Creating venv in .venv"
     python3 -m venv .venv
     source ./.venv/bin/activate
-    python3 -m venv install s3cmd
+    python3 -m pip install s3cmd
   fi
   source ./.venv/bin/activate
-  
-  ls "$TORCH_PACKAGES_DIR" | grep -E '\.whl$' > "$TORCH_PACKAGES_DIR/index.txt"
+
+  mapfile -t WHLS < <(find "$TORCH_PACKAGES_DIR" -maxdepth 1 -mindepth 1 -name '*.whl' -printf '%f\n')
+  if [ ${#WHLS[@]} -eq 0 ]; then
+    echo "ERROR: no .whl files in $TORCH_PACKAGES_DIR, nothing to publish" >&2
+    exit 1
+  fi
+  printf '%s\n' "${WHLS[@]}" > "$TORCH_PACKAGES_DIR/index.txt"
   echo "Torch whl packages in index:"
   cat "$TORCH_PACKAGES_DIR/index.txt"
   s3cmd put -r "$ROCM_PACKAGES_DIR" "s3://py-gfx906/" --acl-public

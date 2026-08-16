@@ -8,6 +8,7 @@ IMAGE_TAGS=(
   "$ROCM_IMAGE:${ROCM_VERSION}-complete-${REPO_GIT_REF}"
   "$ROCM_IMAGE:${ROCM_VERSION}-complete"
 )
+
 init_image_annotations "ROCm gfx906" "rocm" "${ROCM_BASE_IMAGE}"
 
 echo "Start building ROCm image..."
@@ -16,6 +17,7 @@ echo "ROCM_BUILD:   ${ROCM_BUILD}"
 
 DOCKER_EXTRA_ARGS=()
 append_tags_and_annotations_args
+
 skip_if_image_pushed "${IMAGE_TAGS[0]}" "$ROCM_FORCE_BUILD"
 
 DOCKER_EXTRA_ARGS+=(

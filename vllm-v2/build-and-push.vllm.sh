@@ -1,5 +1,5 @@
 #/bin/bash
-set -e
+set -eo pipefail
 
 cd $(dirname $0)
 source ../env.sh "vllm-v2" "pytorch"

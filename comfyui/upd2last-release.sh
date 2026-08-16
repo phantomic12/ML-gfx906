@@ -1,8 +1,8 @@
-#/bin/bash
-set -eo pipefail
+#!/bin/bash
+set -euo pipefail
 
-cd $(dirname $0)
-source ../env.sh
+cd "$(dirname "$0")"
+source ../scripts/lib/build-lib.sh
 
 RELEASE_TAG="$(github_last_release_tag "Comfy-Org/ComfyUI")"
 

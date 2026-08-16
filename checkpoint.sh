@@ -1,10 +1,15 @@
 #/bin/bash
+set -eo pipefail
 
+cd "$(dirname "$0")"
 source ./env.sh
 
-if ! [ -z "$(git status --porcelain)" ]; then 
+if ! [ -z "$(git status --porcelain)" ]; then
   echo "Workdir is dirty!"
-  #exit 10
+  if [ "${CHECKPOINT_ALLOW_DIRTY:-0}" != "1" ]; then
+    echo "Commit/stash changes or set CHECKPOINT_ALLOW_DIRTY=1 to tag anyway." >&2
+    exit 10
+  fi
 fi
 
 TAG_NAME=$(git_get_current_tag)

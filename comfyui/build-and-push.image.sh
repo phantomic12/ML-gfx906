@@ -24,6 +24,7 @@ echo "TORCH_VERSION: ${COMFYUI_PYTORCH_VERSION}"
 
 DOCKER_EXTRA_ARGS=()
 append_tags_and_annotations_args
+
 skip_if_image_pushed "${IMAGE_TAGS[0]}" "$COMFYUI_FORCE_BUILD"
 
 DOCKER_EXTRA_ARGS+=(

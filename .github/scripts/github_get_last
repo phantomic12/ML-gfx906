@@ -4,12 +4,13 @@ set -euo pipefail
 
 usage() {
   echo "Usage: $0 --type tag|release --repo https://github.com/OWNER/REPOSITORY.git [--github-token TOKEN]" >&2
+  echo "       token may also be passed via the GITHUB_TOKEN env var (preferred: not visible in the process list)" >&2
   exit 2
 }
 
 type=""
 repo=""
-github_token=""
+github_token="${GITHUB_TOKEN:-}"
 
 while [ "$#" -gt 0 ]; do
   case "$1" in

@@ -2,6 +2,12 @@
 # Shared helpers for the per subproject build-and-push.* scripts.
 # Sourced automatically by the root env.sh.
 
+# Abort the calling build script with a message.
+function env_fail {
+  echo "ERROR: $*" >&2
+  exit 1
+}
+
 # Set a variable only when it is unset or empty.
 # Usage: set_default VAR_NAME "value"
 function set_default {
@@ -11,41 +17,61 @@ function set_default {
   fi
 }
 
-# Run a git command in the given dir ("" = current dir).
-# Usage: git_in_dir <dir> <git args...>
-function git_in_dir {
-  local dir="$1"
-  shift
-  if [ "$dir" != "" ]; then pushd "$dir" > /dev/null; fi
-  git "$@"
-  if [ "$dir" != "" ]; then popd > /dev/null; fi
-}
-
+# 0 - image is in registry
+# 1 - image is not in registry
+# 2 - registry could not be queried (auth, network, no docker, ...)
 function docker_image_pushed {
-  if docker buildx imagetools inspect "$1" > /dev/null 2> /dev/null; then
+  local output rc=0
+  output="$(docker buildx imagetools inspect "$1" 2>&1)" || rc=$?
+  if [ $rc -eq 0 ]; then
     return 0
-  else
+  fi
+  if grep -qiE 'not found|manifest unknown|manifest_unknown|name_unknown|no such manifest|does not exist' <<< "$output"; then
     return 1
   fi
+  echo "ERROR: failed to inspect $1:" >&2
+  echo "$output" >&2
+  return 2
+}
+
+# Same as docker_image_pushed, but a registry error aborts instead of being
+# reported as "not in registry" (which would silently rebuild and overwrite).
+function docker_image_pushed_or_fail {
+  local rc=0
+  docker_image_pushed "$1" || rc=$?
+  case $rc in
+    0) return 0 ;;
+    1) return 1 ;;
+    *) env_fail "can not determine whether $1 is already in the registry" ;;
+  esac
 }
 
 function git_get_current_tag {
-  git_in_dir "$1" tag --points-at HEAD | sed 's|+||g'
+  local out
+  out="$(git -C "${1:-.}" tag --points-at HEAD)" || return 1
+  echo "$out" | sed 's|+||g'
 }
 
 function git_get_origin {
-  git_in_dir "$1" config --get remote.origin.url
+  git -C "${1:-.}" config --get remote.origin.url
 }
 
 function git_get_current_sha {
-  git_in_dir "$1" rev-parse --short HEAD
+  git -C "${1:-.}" rev-parse --short HEAD
 }
 
-# Latest release tag of a github repo.
+# Latest release tag of a github repo. Aborts when it can not be resolved.
 # Usage: github_last_release_tag <owner/repo>
 function github_last_release_tag {
-  curl -L -H "Accept: application/vnd.github+json" \
-    "https://api.github.com/repos/$1/releases?per_page=1" | yq -r '.[0].tag_name'
+  local tag
+  tag="$(curl --fail --silent --show-error --location \
+    -H "Accept: application/vnd.github+json" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    "https://api.github.com/repos/$1/releases?per_page=1" | yq -er '.[0].tag_name')" || tag=""
+  if [ -z "$tag" ] || [ "$tag" == "null" ]; then
+    env_fail "can not resolve last release tag from $1"
+  fi
+  echo "$tag"
 }
 
 # Fill IMAGE_ANNOTATIONS with the common OCI annotations.
@@ -87,7 +113,7 @@ function skip_if_built {
 
 # Usage: skip_if_image_pushed <image tag> <force build flag>
 function skip_if_image_pushed {
-  if docker_image_pushed "$1"; then
+  if docker_image_pushed_or_fail "$1"; then
     skip_if_built "$1 already in registry." "$2"
   fi
 }
@@ -102,14 +128,18 @@ function skip_if_dir_exists {
 # Run docker buildx with DOCKER_EXTRA_ARGS and tee the output to ./logs.
 # Usage: docker_build_with_log [build context dir]
 function docker_build_with_log {
-  mkdir -p ./logs || true
+  mkdir -p ./logs
   docker buildx build "${DOCKER_EXTRA_ARGS[@]}" "${1:-./build-context}" 2>&1 \
     | tee "./logs/build_$(date +%Y%m%d%H%M%S).log"
 }
 
-# Copy built deb packages to the packages host.
+# Copy built deb packages to the packages host. Aborts when nothing was built.
 # Usage: scp_debs <packages dir> <packages host subdir>
 function scp_debs {
-  local scp_dst="k3s@kube-worker6.arkprojects.lan:/home/k3s/rocm-dev-packages/$2"
-  find "$1" -maxdepth 1 -mindepth 1 -name "*.deb" -exec scp {} "$scp_dst" \;
+  local debs
+  mapfile -t debs < <(find "$1" -maxdepth 1 -mindepth 1 -name "*.deb")
+  if [ ${#debs[@]} -eq 0 ]; then
+    env_fail "no .deb files in $1 to push"
+  fi
+  scp "${debs[@]}" "k3s@kube-worker6.arkprojects.lan:/home/k3s/rocm-dev-packages/$2"
 }

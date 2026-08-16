@@ -10,6 +10,9 @@ on:
   schedule:
     - cron: "0 14 * * *"
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -48,7 +51,7 @@ jobs:
         run: |
           cd ./comfyui
           if [ "$COMFYUI_BRANCH" == "" ]; then
-            COMFYUI_BRANCH="$("$GITHUB_WORKSPACE/.github/scripts/github_get_last" --type release --repo "$COMFYUI_REPO" --github-token "$GITHUB_TOKEN")"
+            COMFYUI_BRANCH="$("$GITHUB_WORKSPACE/.github/scripts/github_get_last" --type release --repo "$COMFYUI_REPO")"
             export COMFYUI_BRANCH
           fi
           ./build-and-push.image.sh

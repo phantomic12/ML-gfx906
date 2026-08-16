@@ -10,6 +10,9 @@ on:
   schedule:
     - cron: "0 14 * * *"
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -51,7 +54,7 @@ jobs:
         run: |
           cd ./llama.cpp
           if [ "$LLAMA_BRANCH" == "" ]; then
-            LLAMA_BRANCH="$("$GITHUB_WORKSPACE/.github/scripts/github_get_last" --type release --repo "$LLAMA_REPO" --github-token "$GITHUB_TOKEN")"
+            LLAMA_BRANCH="$("$GITHUB_WORKSPACE/.github/scripts/github_get_last" --type release --repo "$LLAMA_REPO")"
             export LLAMA_BRANCH
           fi
           export LLAMA_PRESET_NAME="${LLAMA_BRANCH}-rocm-${LLAMA_ROCM_VERSION}"
