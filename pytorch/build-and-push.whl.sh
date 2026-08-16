@@ -17,18 +17,9 @@ echo "ROCM IMAGE:           ${TORCH_BASE_IMAGE}"
 echo "ROCM ARCH:            ${ROCM_ARCH}"
 echo "ROCM VERSION:         ${TORCH_ROCM_VERSION}"
 
-DOCKER_EXTRA_ARGS=()
-if [ -d  "$TORCH_PACKAGES_DIR" ]; then
-  echo "Directory $TORCH_PACKAGES_DIR exist. "
-  if [ "$TORCH_FORCE_BUILD" == "1" ]; then
-    echo "Force build..."
-  else
-    echo "Skip."
-    exit 0
-  fi
-fi
+skip_if_dir_exists "$TORCH_PACKAGES_DIR" "$TORCH_FORCE_BUILD"
 
-DOCKER_EXTRA_ARGS+=(
+DOCKER_EXTRA_ARGS=(
   --build-arg "BASE_ROCM_IMAGE=${TORCH_BASE_IMAGE}"
   --build-arg "ROCM_ARCH=${ROCM_ARCH}"
   --build-arg "VERSION_SUFFIX=${TORCH_VERSION_SUFFIX}"
@@ -42,9 +33,8 @@ DOCKER_EXTRA_ARGS+=(
   --pull
 )
 
-mkdir -p ./logs
 echo "Build PyTorch wheel packages"
-docker buildx build "${DOCKER_EXTRA_ARGS[@]}" ./build-context 2>&1 | tee ./logs/build_$(date +%Y%m%d%H%M%S).log
+docker_build_with_log
 
 if [ "$TORCH_PUSH" == "1" ]; then
   if ! [ -e ".venv/bin/activate" ]; then

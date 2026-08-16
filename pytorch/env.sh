@@ -3,14 +3,14 @@
 pushd $(dirname ${BASH_SOURCE[0]})
 
 # rocm version
-if [ "$TORCH_ROCM_VERSION" == "" ];    then TORCH_ROCM_VERSION="7.14"; fi
+set_default TORCH_ROCM_VERSION "7.14"
 # torch git checkpoint
-if [ "$TORCH_VERSION" == "" ];         then TORCH_VERSION="v2.13.0"; fi
+set_default TORCH_VERSION "v2.13.0"
 # destination image
-if [ "$TORCH_IMAGE" == "" ];           then TORCH_IMAGE="docker.io/mixa3607/pytorch-gfx906"; fi
+set_default TORCH_IMAGE "docker.io/mixa3607/pytorch-gfx906"
 # push result
-if [ "$TORCH_PUSH" == "" ];            then TORCH_PUSH="1"; fi
+set_default TORCH_PUSH "1"
 # packages source
-if [ "$TORCH_PACKAGES_SOURCE" == "" ]; then TORCH_PACKAGES_SOURCE="fetch"; fi
+set_default TORCH_PACKAGES_SOURCE "fetch"
 
 popd

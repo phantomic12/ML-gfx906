@@ -1,53 +1,6 @@
 #/bin/bash
 
-# Abort the calling build script with a message.
-function env_fail {
-  echo "ERROR: $*" >&2
-  exit 1
-}
-
-# 0 - image is in registry
-# 1 - image is not in registry
-# 2 - registry could not be queried (auth, network, no docker, ...)
-function docker_image_pushed {
-  local output rc=0
-  output="$(docker buildx imagetools inspect "$1" 2>&1)" || rc=$?
-  if [ $rc -eq 0 ]; then
-    return 0
-  fi
-  if grep -qiE 'not found|manifest unknown|manifest_unknown|name_unknown|no such manifest|does not exist' <<< "$output"; then
-    return 1
-  fi
-  echo "ERROR: failed to inspect $1:" >&2
-  echo "$output" >&2
-  return 2
-}
-
-# Same as docker_image_pushed, but a registry error aborts instead of being
-# reported as "not in registry" (which would silently rebuild and overwrite).
-function docker_image_pushed_or_fail {
-  local rc=0
-  docker_image_pushed "$1" || rc=$?
-  case $rc in
-    0) return 0 ;;
-    1) return 1 ;;
-    *) env_fail "can not determine whether $1 is already in the registry" ;;
-  esac
-}
-
-function git_get_current_tag {
-  local out
-  out="$(git -C "${1:-.}" tag --points-at HEAD)" || return 1
-  echo "$out" | sed 's|+||g'
-}
-
-function git_get_origin {
-  git -C "${1:-.}" config --get remote.origin.url
-}
-
-function git_get_current_sha {
-  git -C "${1:-.}" rev-parse --short HEAD
-}
+source "$(dirname "${BASH_SOURCE[0]}")/scripts/lib/build-lib.sh"
 
 if [ "$REPO_GIT_REF" == "" ]; then
   REPO_GIT_REF="$(git_get_current_tag || true)"

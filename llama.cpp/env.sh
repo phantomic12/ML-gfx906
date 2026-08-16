@@ -2,40 +2,19 @@
 
 pushd $(dirname ${BASH_SOURCE[0]})
 
-if [ "$LLAMA_IMAGE" == "" ]; then
-  LLAMA_IMAGE=docker.io/mixa3607/llama.cpp-gfx906
-fi
-
+set_default LLAMA_IMAGE "docker.io/mixa3607/llama.cpp-gfx906"
 # rocm ver
-if [ "$LLAMA_ROCM_VERSION" == "" ]; then
-  LLAMA_ROCM_VERSION=7.14
-fi
+set_default LLAMA_ROCM_VERSION "7.14"
 
-if [ "$LLAMA_REPO" == "" ]; then
-  LLAMA_REPO="https://github.com/ggml-org/llama.cpp.git"
-fi
-if [ "$LLAMA_BRANCH" == "" ]; then
-  LLAMA_BRANCH="master"
-fi
-if [ "$LLAMA_COMMIT" == "" ]; then
-  LLAMA_COMMIT=""
-fi
-if [ "$LLAMA_CMAKE_HIP_FLAGS" == "" ]; then
-  LLAMA_CMAKE_HIP_FLAGS=""
-fi
-if [ "$LLAMA_CCACHE_MAXSIZE" == "" ]; then
-  LLAMA_CCACHE_MAXSIZE="2G"
-fi
-if [ "$LLAMA_IS_RELEASE" == "" ]; then
-  LLAMA_IS_RELEASE="0"
-fi
-if [ "$LLAMA_PATCH" == "" ]; then 
-  LLAMA_PATCH="empty.patch"
-fi
+set_default LLAMA_REPO "https://github.com/ggml-org/llama.cpp.git"
+set_default LLAMA_BRANCH "master"
+set_default LLAMA_COMMIT ""
+set_default LLAMA_CMAKE_HIP_FLAGS ""
+set_default LLAMA_CCACHE_MAXSIZE "2G"
+set_default LLAMA_IS_RELEASE "0"
+set_default LLAMA_PATCH "empty.patch"
 
 # push image
-if [ "$LLAMA_PUSH" == "" ]; then
-  LLAMA_PUSH="1"
-fi
+set_default LLAMA_PUSH "1"
 
 popd

@@ -17,14 +17,7 @@ echo "ROCM ARCH:          ${ROCM_ARCH}"
 echo "ROCM VERSION:       ${ROCM_VERSION}"
 echo "PUSH:               ${RBT_PUSH}"
 
-if [ -d "$RBT_PACKAGES_DIR" ]; then
-  echo "Directory $RBT_PACKAGES_DIR exists."
-  if [ "$RBT_FORCE_BUILD" != "1" ]; then
-    echo "Skip."
-    exit 0
-  fi
-  echo "Force build..."
-fi
+skip_if_dir_exists "$RBT_PACKAGES_DIR" "$RBT_FORCE_BUILD"
 
 DOCKER_EXTRA_ARGS=(
   --build-arg "BASE_ROCM_IMAGE=${RBT_BASE_IMAGE}"
@@ -39,15 +32,8 @@ DOCKER_EXTRA_ARGS=(
   --output "type=local,dest=$RBT_PACKAGES_DIR"
 )
 
-mkdir -p ./logs
-docker buildx build "${DOCKER_EXTRA_ARGS[@]}" ./build-context 2>&1 | tee "./logs/build_$(date +%Y%m%d%H%M%S).log"
+docker_build_with_log
 
 if [ "$RBT_PUSH" = "1" ]; then
-  SCP_DST="k3s@kube-worker6.arkprojects.lan:/home/k3s/rocm-dev-packages/rocm-bandwidth-test"
-  mapfile -t DEBS < <(find "$RBT_PACKAGES_DIR" -maxdepth 1 -mindepth 1 -name "*.deb")
-  if [ ${#DEBS[@]} -eq 0 ]; then
-    echo "ERROR: no .deb files in $RBT_PACKAGES_DIR to push" >&2
-    exit 1
-  fi
-  scp "${DEBS[@]}" "$SCP_DST"
+  scp_debs "$RBT_PACKAGES_DIR" "rocm-bandwidth-test"
 fi

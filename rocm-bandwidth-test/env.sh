@@ -2,11 +2,7 @@
 
 pushd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null
 
-if [ "$RBT_VERSION" = "" ]; then
-  RBT_VERSION="develop"
-fi
-if [ "$RBT_PUSH" = "" ]; then
-  RBT_PUSH="0"
-fi
+set_default RBT_VERSION "develop"
+set_default RBT_PUSH "0"
 
 popd > /dev/null
