@@ -42,7 +42,9 @@ One-line form: `deb [signed-by=/etc/apt/keyrings/apt-gfx906.asc] https://github.
 
 1. Build debs (existing build workflows, or `upload-debs-to-release.yaml`
    with `release_tag` + `deb_paths` inputs).
-2. Run **Publish APT repo to GitHub Releases** workflow — it downloads the
+2. Run **Publish APT repo to GitHub Releases** workflow (manual dispatch, after
+   all `.deb` assets are uploaded — a release-triggered run would index whatever
+   subset of assets happened to exist) — it downloads the
    `.deb` assets, regenerates `Packages`/`Release`/`InRelease` (flat), signs,
    uploads the index files back into the same release, and deploys Pages
    (pubkey + landing page).

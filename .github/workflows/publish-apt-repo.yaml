@@ -7,8 +7,6 @@ on:
         description: 'Release tag whose *.deb assets become the apt repo (empty = latest release)'
         required: false
         type: string
-  release:
-    types: [published]
 
 permissions:
   contents: write
@@ -19,39 +17,47 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
-env:
-  KEY_ID: ${{ vars.APT_KEY_ID }}
-
 jobs:
-  publish:
+  build:
     runs-on: ubuntu-latest
+    # Holds the signing key only; Pages deploys from the github-pages
+    # environment in the deploy job below.
     environment: apt-signing
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+
+      - name: Check signing configuration
+        env:
+          KEY_ID: ${{ vars.APT_KEY_ID }}
+          GPG_PRIVATE_KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
+        run: |
+          [ -n "$KEY_ID" ] || { echo "repository variable APT_KEY_ID is not set"; exit 1; }
+          [ -n "$GPG_PRIVATE_KEY" ] || { echo "secret APT_GPG_PRIVATE_KEY is not set"; exit 1; }
 
       - name: Determine release tag
         id: tag
         env:
           GH_TOKEN: ${{ github.token }}
+          INPUT_TAG: ${{ inputs.release_tag }}
         run: |
-          if [ -n "${{ inputs.release_tag }}" ]; then
-            TAG="${{ inputs.release_tag }}"
-          elif [ "${{ github.event_name }}" = "release" ]; then
-            TAG="${{ github.event.release.tag_name }}"
+          if [ -n "$INPUT_TAG" ]; then
+            TAG="$INPUT_TAG"
           else
             TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
           fi
+          [ -n "$TAG" ] || { echo "no release found to publish"; exit 1; }
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "Using release: $TAG"
 
       - name: Install deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y apt-utils dpkg-dev gnupg
+          sudo apt-get install -y apt-utils dpkg-dev gnupg xz-utils
 
       - name: Import GPG signing key
         env:
+          KEY_ID: ${{ vars.APT_KEY_ID }}
           GPG_PRIVATE_KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
         run: |
           echo "$GPG_PRIVATE_KEY" | gpg --batch --import
@@ -60,9 +66,10 @@ jobs:
       - name: Download .deb assets from release
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
         run: |
           mkdir -p debs
-          gh release download "${{ steps.tag.outputs.tag }}" --pattern '*.deb' --dir debs
+          gh release download "$TAG" --pattern '*.deb' --dir debs
           echo "Downloaded $(find debs -name '*.deb' | wc -l) debs:"
           du -sh debs
 
@@ -71,24 +78,28 @@ jobs:
           DEBS_DIR: debs
           RELEASE_TAG: ${{ steps.tag.outputs.tag }}
           SITE_DIR: site
+          PAGES_DIR: pages
+          KEY_ID: ${{ vars.APT_KEY_ID }}
         run: ./scripts/build-apt-index.sh
 
       - name: Upload index files to release (flat repo)
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
         run: |
-          gh release upload "${{ steps.tag.outputs.tag }}" \
+          gh release upload "$TAG" \
             site/Packages site/Packages.gz site/Packages.xz \
             site/Release site/InRelease site/Release.gpg \
             site/pubkey.asc --clobber
-          echo "Index uploaded to release ${{ steps.tag.outputs.tag }}"
+          echo "Index uploaded to release $TAG"
 
-      - name: Stage Pages files (index only, no debs)
+      # Mirror the index onto Pages for inspection; the debs stay in the release
+      # (Pages caps sites at 1 GB, a build set is ~1.4 GB), so apt must keep
+      # using the release URL as its base URI.
+      - name: Mirror index files onto Pages
         run: |
-          mkdir -p site-docs
           cp site/Packages site/Packages.gz site/Packages.xz \
-             site/Release site/InRelease site/Release.gpg \
-             site/pubkey.asc site/index.html site-docs/
+             site/Release site/InRelease site/Release.gpg pages/
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
@@ -96,7 +107,15 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: site-docs
+          path: pages
 
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4

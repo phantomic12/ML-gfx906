@@ -38,4 +38,3 @@ jobs:
           export TORCH_ROCM_VERSION="${{ matrix.build.rocm_version }}"
           export TORCH_VERSION="${{ matrix.build.torch_version }}"
           ./build-and-push.image.sh
-# re-register

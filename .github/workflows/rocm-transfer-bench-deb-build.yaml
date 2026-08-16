@@ -36,4 +36,3 @@ jobs:
           path: rocm-transfer-bench/output/**/*.deb
           if-no-files-found: error
           retention-days: 14
-# re-register
